@@ -11,12 +11,40 @@ public class BookRepository(AppDbContext context) : IBookRepository
 
     public async Task AddBookAsync(Book book)
     {
+        var existingBook = await _context.Books
+            .FirstOrDefaultAsync(b => b.Title.ToLower() == book.Title.ToLower());
+
+        if (existingBook != null)
+        {
+            throw new InvalidOperationException("A book with the same title already exists");
+        }
+
         await _context.Books.AddAsync(book);
         await _context.SaveChangesAsync();
     }
 
     public async Task AddBooksAsync(IEnumerable<Book> books)
     {
+        var duplicateTitles = books
+            .GroupBy(b => b.Title.ToLower())
+            .Where(g => g.Count() > 1)
+            .Select(g => g.Key)
+            .ToList();
+
+        if (duplicateTitles.Any())
+        {
+            throw new InvalidOperationException($"Duplicate titles found in the bulk list: {string.Join(", ", duplicateTitles)}");
+        }
+
+        var existingTitles = await _context.Books
+            .Where(b => books.Select(bk => bk.Title.ToLower()).Contains(b.Title.ToLower()))
+            .Select(b => b.Title)
+            .ToListAsync();
+
+        if (existingTitles.Any())
+        {
+            throw new InvalidOperationException($"Books with the following titles already exist: {string.Join(", ", existingTitles)}");
+        }
         await _context.Books.AddRangeAsync(books);
         await _context.SaveChangesAsync();
     }
@@ -43,6 +71,13 @@ public class BookRepository(AppDbContext context) : IBookRepository
 
     public async Task UpdateBookAsync(Book book)
     {
+        var existingBookWithSameTitle = await _context.Books
+            .FirstOrDefaultAsync(b => b.Title.ToLower() == book.Title.ToLower() && b.Id != book.Id);
+
+        if (existingBookWithSameTitle != null)
+        {
+            throw new InvalidOperationException("A book with the same title already exists.");
+        }
         _context.Books.Update(book);
         await _context.SaveChangesAsync();
     }

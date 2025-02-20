@@ -38,12 +38,24 @@ public class BooksController(IBookService bookService) : ControllerBase
     public async Task<IActionResult> AddBook([FromBody] CreateBookDto book)
     {
         if (!ModelState.IsValid)
-                return BadRequest(ModelState);
+            return BadRequest(ModelState);
+
         if (book == null)
             return BadRequest("Invalid book data");
 
-        await _bookService.AddBookAsync(book);
-        return CreatedAtAction(nameof(GetAllBooks), new { }, "Book added successfully");
+        try
+        {
+            await _bookService.AddBookAsync(book);
+            return CreatedAtAction(nameof(GetAllBooks), new { }, "Book added successfully");
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, $"An error occurred: {ex.Message}");
+        }
     }
 
     [Authorize(Roles = "Admin")]
@@ -51,14 +63,26 @@ public class BooksController(IBookService bookService) : ControllerBase
     public async Task<IActionResult> AddBooks([FromBody] IEnumerable<CreateBookDto> books)
     {
         if (!ModelState.IsValid)
-                return BadRequest(ModelState);
+            return BadRequest(ModelState);
+
         if (books == null || !books.Any())
         {
             return BadRequest("No books provided");
         }
 
-        await _bookService.AddBooksAsync(books);
-        return Ok("Books added successfully");
+        try
+        {
+            await _bookService.AddBooksAsync(books);
+            return CreatedAtAction(nameof(GetAllBooks), new { }, "Books added successfully");
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, $"An error occurred: {ex.Message}");
+        }
     }
 
     [Authorize(Roles = "Admin")]
@@ -66,12 +90,24 @@ public class BooksController(IBookService bookService) : ControllerBase
     public async Task<IActionResult> UpdateBook(Guid id, [FromBody] UpdateBookDto book)
     {
         if (!ModelState.IsValid)
-                return BadRequest(ModelState);
+            return BadRequest(ModelState);
+
         if (book == null)
             return BadRequest("Invalid book data");
 
-        await _bookService.UpdateBookAsync(id, book);
-        return NoContent();
+        try
+        {
+            await _bookService.UpdateBookAsync(id, book);
+            return NoContent();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            return StatusCode(500, $"An error occurred: {ex.Message}");
+        }
     }
 
     [Authorize(Roles = "Admin")]
