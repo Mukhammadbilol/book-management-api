@@ -1,5 +1,6 @@
 ﻿using BookManagementApi.Domain.DTOs;
 using BookManagementApi.Services;
+using BookManagementApi.Validators;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -23,7 +24,7 @@ public class BooksController(IBookService bookService) : ControllerBase
     {
         var book = await _bookService.GetBookByIdAsync(id);
 
-        return book == null ? NotFound("Book not found") : Ok(book);
+        return book == null ? NotFound("Book not found with the provided ID") : Ok(book);
     }
 
     [HttpGet("popular")]
@@ -62,12 +63,19 @@ public class BooksController(IBookService bookService) : ControllerBase
     [HttpPost("bulk")]
     public async Task<IActionResult> AddBooks([FromBody] IEnumerable<CreateBookDto> books)
     {
-        if (!ModelState.IsValid)
-            return BadRequest(ModelState);
-
         if (books == null || !books.Any())
         {
             return BadRequest("No books provided");
+        }
+
+        var validator = new CreateBookDtoValidator();
+        var errors = books.SelectMany(book => validator.Validate(book).Errors)
+        .Where(error => error != null)
+        .ToList();
+
+        if (errors.Any())
+        {
+            return BadRequest(errors.Select(x => x.ErrorMessage));
         }
 
         try
@@ -114,8 +122,15 @@ public class BooksController(IBookService bookService) : ControllerBase
     [HttpDelete("{id::guid}")]
     public async Task<IActionResult> SoftDeleteBook(Guid id)
     {
-        await _bookService.SoftDeleteBookAsync(id);
-        return NoContent();
+        try
+        {
+            await _bookService.SoftDeleteBookAsync(id);
+            return NoContent();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
     }
 
     [Authorize(Roles = "Admin")]
@@ -127,7 +142,14 @@ public class BooksController(IBookService bookService) : ControllerBase
             return BadRequest("No book IDs provided");
         }
 
-        await _bookService.SoftDeleteBooksAsync(ids);
-        return NoContent();
+        try
+        {
+            await _bookService.SoftDeleteBooksAsync(ids);
+            return NoContent();
+        }
+        catch (InvalidOperationException ex)
+        {
+            return BadRequest(ex.Message);
+        }
     }
 }

@@ -22,6 +22,8 @@ public class UpdateBookDtoValidator : AbstractValidator<UpdateBookDto>
             .WithMessage("Publication year must be less than or equal to the current year");
 
         RuleFor(x => x.IsDeleted)
-            .NotNull().WithMessage("IsDeleted is required. IsDeleted must be a boolean value (true or false)");
+            .NotNull().WithMessage("IsDeleted is required")
+            .Must(x => x == true || x == false)
+            .WithMessage("IsDeleted must be a boolean value (true or false)");
     }
 }

@@ -84,7 +84,9 @@ public class BookService(IBookRepository repository) : IBookService
         var existingBook = await _repository.GetBookByIdAsync(id);
 
         if (existingBook == null)
-            return;
+        {
+            throw new InvalidOperationException("Book not found with the provided ID");
+        }
 
         existingBook.Title = bookDto.Title;
         existingBook.PublicationYear = bookDto.PublicationYear;
@@ -96,11 +98,29 @@ public class BookService(IBookRepository repository) : IBookService
 
     public async Task SoftDeleteBookAsync(Guid id)
     {
+        var book = await _repository.GetBookByIdAsync(id);
+        if (book == null)
+        {
+            throw new InvalidOperationException("Book not found with the provided ID");
+        }
+        else if (book.IsDeleted)
+        {
+            throw new InvalidOperationException("Book already deleted");
+        }
+    
         await _repository.SoftDeleteBookAsync(id);
     }
 
     public async Task SoftDeleteBooksAsync(IEnumerable<Guid> ids)
     {
+        var existingBooks = await _repository.GetAllBooksAsync();
+        var books = existingBooks.Where(b => ids.Contains(b.Id) && !b.IsDeleted);
+
+        if (!books.Any())
+        {
+            throw new InvalidOperationException("No books found with the provided IDs or all are already deleted");
+        }
+
         await _repository.SoftDeleteBooksAsync(ids);
     }
 }
